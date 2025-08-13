@@ -1,30 +1,32 @@
-%function [Conn,netw_flux_0,netw_flux_L]= 
-function network_transport_model_Neu(varargin) %(matdir,varargin)
-%netw_flux,R_ss,S_ss,Mass_edge,N
-%load("220919_MouseDataforVeronica.mat");
+function [N, M, R_Edge_Mass] = network_transport_model_Neu_func(matdir,varargin) %(matdir,varargin)
+
 if nargin < 4
     matdir = [cd filesep 'MatFiles'];
  %matdir = [cd filesep 'MatFiles'];
 end
-alpha_ =0; %1e-2;  % 0; % Recruitment term
+alpha_ =0; %1e-2;  % 0; % Recruitment teralm
 F_edge_0_ = 2; %1e-8*6*30*24*(60)^2;%1e-08; %Recruitment term edge % 0.5 - 9.9
 beta_ = 1e-06;
-gamma1_ = 0.001; %1e-5 ;%0.001; %2e-03; 
+gamma1_ =0.001; %1e-5 ;%0.001; %2e-03; 
 gamma2_ = 0;
-delta_ = 100;% 1; %50;
-epsilon_ = 10; %1e-02;
+delta_ = 50;% 1; %50;
+epsilon_ = 25; %1e-02;
     %25;
-lambda1_ = 0.1; %1e-02;   %0.005;%0.025
+lambda1_ = 1e-02;   %0.005;%0.025
 %lambda2_ = 1e-02; %0.005;% 0.025
 gamma1_dt_=0;
 lambda_dt_=0;
 study_ = 'Hurtado';
 init_path_ = [];
-init_rescale_ = 2e-2; %2e-2;
+init_rescale_ = 2e-2; %2; %2e-2; # Lower rescale
 dt_ =0.01;
 T_ = 0.1;
-trange_ =[0:0.0005:0.002, 0.0025: 0.0025: 0.1, 0.105:0.005:0.3, 0.31:0.01:1];
-%trange_ =[0: 0.00005: 0.0001]; %   %0.00009, 0.0001:0.0001:0.0009,0.001:0.001: 0.002, 0.0025: 0.0025: 0.01];
+%trange_ =[0:0.0005:0.002, 0.0025: 0.0025: 0.1, 0.105:0.005:0.3, 0.31:0.01:2];
+%trange_ = [0:0.001:0.004, 0.005:0.005:0.05, 0.06:0.01:0.1, 0.125:0.025:2];
+
+trange_ = [0:0.0005:0.002, 0.0025:0.0025:0.1, 0.11:0.01:0.2, 0.225:0.025:2];
+%trange_ = [0:0.0005:0.002, 0.0025:0.0025:0.1, 0.125:0.025:2];
+
 length(trange_)
 %trange_ =[0 0.0005: 0.0025, 0.003: 0.0025: 0.053];
 frac_ = 0.92; % Average fraction of n diffusing (Konsack 2007)
@@ -199,13 +201,13 @@ end
  
  i_zero=N(:,1)==0;   %init_tau==0;
 
- Regional_edge_mass = zeros([nroi, nroi, nt, 4]);
+Regional_edge_mass = zeros([nroi, nroi, nt, 4]);
 
  netw_flux_0= zeros([nroi,size(N)]);
   netw_flux_L= zeros([nroi,size(N)]);
-  Mass_edge=zeros([nroi,nroi,nt]);
+  %Mass_edge=zeros([nroi,nroi,nt]);
   n_ss0=zeros([nroi,nroi,nt]);
-  res_max=zeros(1,nt);
+  %res_max=zeros(1,nt);
  Gamma1=gamma1_new*ones(nroi,nt);
  %Gamma1_der=zeros(nroi,nt);
 F_source_edge=zeros([nroi,nroi,nt]);
@@ -245,10 +247,13 @@ Gamma1_x0_0=gamma1_new*ones(1,3);     %Gamma1(:,1).*Adj;
 Lambda1_x0_0=ip.Results.lambda1*ones(1,3);       %Lambda1(:,1).*Adj;
 %f_ss0=0.0001*ones(nroi);
 f_ss0=[0.0001 0.0001  0.0001];
+
+Adj_in = readmatrix([matdir filesep 'mouse_adj_matrix_19_01.csv']);
+
  fprintf('Flux calculation at initial time \n') 
  tic
  
-  [J_0,J_L,Mass_edge_0,F_source_edge_0,n_ss_init,res_max(1,1),~]=NetworkFluxCalculator_Neu(N_adj_0,N_adj_L,f_ss0,matdir,'beta',ip.Results.beta,...
+  [J_0,J_L,~,F_source_edge_0,n_ss_init,~,~]=NetworkFluxCalculator_Neu(N_adj_0,N_adj_L,f_ss0,Adj_in,'beta',ip.Results.beta,...
                                     'delta',ip.Results.delta,'F_edge_0',ip.Results.F_edge_0,...
                                     'epsilon',ip.Results.epsilon,...
                                     'frac',ip.Results.frac,...
@@ -269,7 +274,7 @@ f_ss0=[0.0001 0.0001  0.0001];
                                     'time_scale', ip.Results.time_scale, 'connectome_subset','Single_bis', ...
                                     'mu_r_0',ip.Results.mu_r_0,'mu_r_L',ip.Results.mu_r_L, 'mu_u_0',ip.Results.mu_u_0, 'mu_u_L',ip.Results.mu_u_L ); %compute the steady state  network flux at time t0
 
-  res_max(1,1);
+  %res_max(1,1);
  netw_flux_0(seedregions_,:,1)=J_0(1,1)*Adj(seedregions_,:);
 netw_flux_L(seedregions_,:,1)=J_L(1,1)*Adj(seedregions_,:);
 netw_flux_0(:,seedregions_,1)=J_0(1,2)*Adj(:,seedregions_);
@@ -280,41 +285,16 @@ netw_flux_L(seedregions_,seedregions_,1)=J_L(1,3)*Adj(seedregions_,seedregions_)
 % Adj(seedregions_,seedregions_)
 % netw_flux_0(:,:,1)
 % netw_flux_L(:,:,1)
-Mass_edge(seedregions_,:,1)=Mass_edge_0(1,1)*Adj(seedregions_,:);
-Mass_edge(:,seedregions_,1)=Mass_edge_0(1,2)*Adj(:,seedregions_);
-Mass_edge(seedregions_,seedregions_,1)=Mass_edge_0(1,3)*Adj(seedregions_,seedregions_);
+%Mass_edge(seedregions_,:,1)=Mass_edge_0(1,1)*Adj(seedregions_,:);
+%Mass_edge(:,seedregions_,1)=Mass_edge_0(1,2)*Adj(:,seedregions_);
+%Mass_edge(seedregions_,seedregions_,1)=Mass_edge_0(1,3)*Adj(seedregions_,seedregions_);
 F_source_edge(seedregions_,:,1)=F_source_edge_0(1,1)*Adj(seedregions_,:);
 F_source_edge(:,seedregions_,1)=F_source_edge_0(1,2)*Adj(:,seedregions_);
 F_source_edge(seedregions_,seedregions_,1)=F_source_edge_0(1,3)*Adj(seedregions_,seedregions_);
-%n_ss0(:,:,1)
+
 n_ss0(seedregions_,:,1)=n_ss_init(1,1)*Adj(seedregions_,:);
 n_ss0(:,seedregions_,1)=n_ss_init(1,2)*Adj(:,seedregions_);
 n_ss0(seedregions_,seedregions_,1)=n_ss_init(1,3)*Adj(seedregions_,seedregions_);
-%n_ss0(:,:,1)
-% N_adj_0=N(:,1).*Adj;
-% f_ss0=0.0001*ones(nroi);
-% Gamma1_x0_0=Gamma1(:,1).*Adj;
-% Lambda1_x0_0=Lambda1(:,1).*Adj;
-%  [netw_flux_0(:,:,1),netw_flux_L(:,:,1),Mass_edge(:,:,1),F_source_edge(:,:,1),n_ss0(:,:,1)]=NetworkFluxCalculator_Neu(N_adj_0,N(:,1),f_ss0,matdir,'beta',ip.Results.beta,...
-%                                     'delta',ip.Results.delta,'F_edge_0',ip.Results.F_edge_0,...
-%                                     'lambda1_x0',Lambda1_x0_0,...
-%                                     'lambda1_xL',Lambda1(:,1),...
-%                                     'gamma1_x0',Gamma1_x0_0,...
-%                                     'gamma1_xL',Gamma1(:,1),...
-%                                     'idx_netw_x0',Idx_netw_x0,'idx_netw_xL',Idx_netw_xL,'frac',ip.Results.frac,...
-%                                     'L_int',ip.Results.L_int,...
-%                                     'L1',ip.Results.L1,...
-%                                     'L_ais',ip.Results.L_ais,...
-%                                     'L_syn',ip.Results.L_syn,...
-%                                     'resmesh',ip.Results.resmesh,...
-%                                     'reltol',ip.Results.reltol,...
-%                                     'abstol',ip.Results.abstol,...
-%                                     'fsolvetol',ip.Results.fsolvetol, ...
-%                                     'time_scale', ip.Results.time_scale, 'connectome_subset',ip.Results.connectome_subset, ...
-%                                     'mu_r_0',ip.Results.mu_r_0,'mu_r_L',ip.Results.mu_r_L, 'mu_u_0',ip.Results.mu_u_0, 'mu_u_L',ip.Results.mu_u_L ); %compute the steady state  network flux at time t0
-% 
-% netw_flux_0(:,:,1)
-% netw_flux_L(:,:,1)
 
  toc
 der=zeros(nroi,nt);
@@ -324,50 +304,11 @@ for h=1:  (nt-1)
   fprintf('Time step %d/%d\n',h,nt-1) 
  %tic
 
-
-
- 
  m_t= Gamma1(:,h).*N(:,h).*(2*beta_new-ip.Results.gamma2.*N(:,h)./(beta_new-ip.Results.gamma2.*N(:,h)).^2);
  %F_in=time_scale.*netw_flux(:,:,h);
  F_in=netw_flux_L(:,:,h);
  F_out=netw_flux_0(:,:,h);
 F_out=F_out.';
-% diag((Conn.'*F_in))
-% diag((Conn*F_out))
-% diag((Conn.'*F_in)) - diag((Conn*F_out))
- %N(:,h+1)=N(:,h)+(1./(Vol.*(1+m_t) +v_1+v_2)).*( (diag((Conn.'*F_in)) - diag((Conn*F_out)) )-B_approx_ij-B_approx_ji -(Vol.*Gamma1_der(:,h).*(N(:,h).^2)./(beta_new-ip.Results.gamma2.*N(:,h)))).*(t(h+1)-t(h));  %ip.Results.dt  ; %((diag((Conn.'*F_in)) - diag((Conn*F_out)))*k + beta*m(:,h)*k-gamma1*(n(:,h).*n(:,h))*k-gamma2*(n(:,h).*m(:,h))*k);
-%  if h==1
-%      N_app=N(:,h)+(1./(Vol.*(1+m_t))).*( ( diag((Conn.'*F_in)) - diag((Conn*F_out))) ).*(t(h+1)-t(h));
-%      Fun_app=(1./(Vol.*(1+m_t))).*( ( diag((Conn.'*F_in)) - diag((Conn*F_out))) );
-%      N_adj_app=N_app.*Adj;
-% 
-%   Gamma1_x0_h1=Gamma1(:,h+1).*Adj;
-%   Gamma1_der_x0_h1=Gamma1_der(:,h+1).*Adj;
-%   Lambda1_x0_h1=Lambda1(:,h+1).*Adj;
-% [F_out_app,F_in_app,~,~,~,~]=NetworkFluxCalculator_Neu(N_adj_app,N_app,n_ss0(:,:,h),matdir,'beta',ip.Results.beta,...
-%                                     'delta',ip.Results.delta,'F_edge_0',ip.Results.F_edge_0,...
-%                                     'lambda1_x0',Lambda1_x0_h1,...
-%                                     'lambda1_xL',Lambda1(:,h+1),...
-%                                     'gamma1_x0',Gamma1_x0_h1,...
-%                                     'gamma1_xL',Gamma1(:,h+1),...
-%                                     'idx_netw_x0',Idx_netw_x0,'idx_netw_xL',Idx_netw_xL,'frac',ip.Results.frac,...
-%                                     'L_int',ip.Results.L_int,...
-%                                     'L1',ip.Results.L1,...
-%                                     'L_ais',ip.Results.L_ais,...
-%                                     'L_syn',ip.Results.L_syn,...
-%                                     'resmesh',ip.Results.resmesh,...
-%                                     'reltol',ip.Results.reltol,...
-%                                     'abstol',ip.Results.abstol,...
-%                                     'fsolvetol',ip.Results.fsolvetol, ...
-%                                     'time_scale', ip.Results.time_scale, 'connectome_subset',ip.Results.connectome_subset, ...
-%                                     'mu_r_0',ip.Results.mu_r_0,'mu_r_L',ip.Results.mu_r_L, 'mu_u_0',ip.Results.mu_u_0, 'mu_u_L',ip.Results.mu_u_L ); %compute the steady state  network flux at time t0
-% F_out_app=F_out_app.';
-% m_t_app=Gamma1(:,h+1).*N_app.*(2*beta_new-ip.Results.gamma2.*N_app./(beta_new-ip.Results.gamma2.*N_app).^2)
-% Fun_app_2=(1./(Vol.*(1+m_t_app))).*( ( diag((Conn.'*F_in_app)) - diag((Conn*F_out_app))) );
-% N(:,h+1)=N(:,h)+(Fun_app+Fun_app_2).*((t(h+1)-t(h))/2);
-%  else
-%  N(:,h+1)=N(:,h)+(1./(Vol.*(1+m_t))).*( ( diag((Conn.'*F_in)) - diag((Conn*F_out))) ).*(t(h+1)-t(h));  %ip.Results.dt  ; %((diag((Conn.'*F_in)) - diag((Conn*F_out)))*k + beta*m(:,h)*k-gamma1*(n(:,h).*n(:,h))*k-gamma2*(n(:,h).*m(:,h))*k);
-%  end
 
  if h<=5
      N_app=N(:,h)+(1./(Vol.*(1+m_t))).*( ( diag((Conn.'*F_in)) - diag((Conn*F_out))) ).*((t(h+1)-t(h))/2);
@@ -377,7 +318,7 @@ F_out=F_out.';
   Gamma1_x0_app=Gamma_app.*Adj;
   %Gamma1_der_x0_h1=Gamma1_der(:,h+1).*Adj;
   Lambda1_x0_app=Lambda1_app.*Adj;
-[F_out_app,F_in_app,~,~,~,~,Regional_edge_mass(:,:,h+1,:)]=NetworkFluxCalculator_Neu(N_adj_app,N_app,n_ss0(:,:,h),matdir,'beta',ip.Results.beta,...
+[F_out_app,F_in_app,~,~,~,~,~]=NetworkFluxCalculator_Neu(N_adj_app,N_app,n_ss0(:,:,h),Adj_in,'beta',ip.Results.beta,...
                                     'delta',ip.Results.delta,'F_edge_0',ip.Results.F_edge_0,...
                                     'epsilon',ip.Results.epsilon,...
                                     'frac',ip.Results.frac,...
@@ -405,33 +346,22 @@ N(:,h+1)=N(:,h)+(Fun_app_2).*((t(h+1)-t(h)));
  N(:,h+1)=N(:,h)+(1./(Vol.*(1+m_t))).*( ( diag((Conn.'*F_in)) - diag((Conn*F_out))) ).*(t(h+1)-t(h));  %ip.Results.dt  ; %((diag((Conn.'*F_in)) - diag((Conn*F_out)))*k + beta*m(:,h)*k-gamma1*(n(:,h).*n(:,h))*k-gamma2*(n(:,h).*m(:,h))*k);
  end
 
-
-
-
-
-%der(:,h)=(N(:,h+1)-N(:,h))./(t(h+1)-t(h))
+ N(:,h+1) = N(:,h+1) + ip.Results.alpha*(t(h+1)-t(h))*N(:,h);
  
- % seedregions_ = (N(:,1) > 0);
- %N(seedregions_,h+1) = N(seedregions_,h+1) + ip.Results.alpha*(t(h+1)-t(h))*N(seedregions_,h); % exponential growth in seed region
- N(seedregions_,h+1) = N(seedregions_,h+1) + ip.Results.alpha*(t(h+1)-t(h)); % linear growth in seed region
- 
- 
-
   N_adj_h1=N(:,h+1).*Adj;
  
   Gamma1_x0_h1=Gamma1(:,h+1).*Adj;
   %Gamma1_der_x0_h1=Gamma1_der(:,h+1).*Adj;
   Lambda1_x0_h1=Lambda1(:,h+1).*Adj;
 
- 
- 
    fprintf('Flux calculation \n') 
 
-
-
-
   tic
-[netw_flux_0(:,:,h+1),netw_flux_L(:,:,h+1),Mass_edge(:,:,h+1),F_source_edge(:,:,h+1),n_ss0(:,:,h+1),res_max(:,h+1),Regional_edge_mass(:,:,h+1,:)]=NetworkFluxCalculator_Neu(N_adj_h1,N(:,h+1),n_ss0(:,:,h),matdir,'beta',ip.Results.beta,...
+
+  % Regional_edge_mass(:,:,h+1,:)
+  % Mass_edge(:,:,h+1)
+
+[netw_flux_0(:,:,h+1),netw_flux_L(:,:,h+1),~,F_source_edge(:,:,h+1),n_ss0(:,:,h+1),~,~]=NetworkFluxCalculator_Neu(N_adj_h1,N(:,h+1),n_ss0(:,:,h),Adj_in,'beta',ip.Results.beta,...
                                     'delta',ip.Results.delta,'F_edge_0',ip.Results.F_edge_0,...
                                     'epsilon',ip.Results.epsilon,...
                                     'frac',ip.Results.frac,...
@@ -454,8 +384,13 @@ N(:,h+1)=N(:,h)+(Fun_app_2).*((t(h+1)-t(h)));
 
 
  toc
+
 end
+
+ M=(Gamma1.* N.^2)./(beta_new-ip.Results.gamma2 * N);
+ R_Edge_Mass = 0; % Regional_edge_mass;
   
+%{
 
 [Max_der, I_max_der]=max(der(:,1));
 
@@ -625,3 +560,5 @@ ylabel('res_max');
 % saveas(figure(8),[ cd '/plot/' 'BJ' '_' 'lambda_var_bis' '.png' ])
 
 end
+
+%}
