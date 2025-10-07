@@ -23,8 +23,9 @@ dt_ =0.01;
 T_ = 0.1;
 %trange_ =[0:0.0005:0.002, 0.0025: 0.0025: 0.1, 0.105:0.005:0.3, 0.31:0.01:2];
 %trange_ = [0:0.001:0.004, 0.005:0.005:0.05, 0.06:0.01:0.1, 0.125:0.025:2];
+trange_ = [0:0.0001:0.002, 0.003:0.001:0.1, 0.105:0.005:2];
 
-trange_ = [0:0.0005:0.002, 0.0025:0.0025:0.1, 0.11:0.01:0.2, 0.225:0.025:2];
+%trange_ = [0:0.0005:0.002, 0.0025:0.0025:0.1, 0.11:0.01:0.2, 0.225:0.025:2];
 %trange_ = [0:0.0005:0.002, 0.0025:0.0025:0.1, 0.125:0.025:2];
 
 length(trange_)
@@ -130,7 +131,10 @@ if ~isempty(ip.Results.init_path)
         init_path((reglog + hemlog) == 2) = 1;
     end
 elseif isnan(mousedata_struct.(ip.Results.study).seed)
-    init_path = logical(mousedata_struct.(ip.Results.study).data(:,1));
+    %init_path = logical(mousedata_struct.(ip.Results.study).data(:,1));
+    init_path = mousedata_struct.(ip.Results.study).data(:,1);
+    mean_nz = mean(nonzeros(init_path));
+    init_path = init_path ./ mean_nz; % For IbaP301S study where seed is not specified and data is nonbinary at t=1
     init_path = DataToCCF(init_path,ip.Results.study,matdir);
 else
     init_path = logical(mousedata_struct.(ip.Results.study).seed);
@@ -304,13 +308,16 @@ for h=1:  (nt-1)
   fprintf('Time step %d/%d\n',h,nt-1) 
  %tic
 
- m_t= Gamma1(:,h).*N(:,h).*(2*beta_new-ip.Results.gamma2.*N(:,h)./(beta_new-ip.Results.gamma2.*N(:,h)).^2);
+ %m_t= Gamma1(:,h).*N(:,h).*(2*beta_new-ip.Results.gamma2.*N(:,h)./(beta_new-ip.Results.gamma2.*N(:,h)).^2);
+ m_t= Gamma1(:,h).*N(:,h).*((2*beta_new-ip.Results.gamma2.*N(:,h))./(beta_new-ip.Results.gamma2.*N(:,h)).^2);
+ 
+ 
  %F_in=time_scale.*netw_flux(:,:,h);
  F_in=netw_flux_L(:,:,h);
  F_out=netw_flux_0(:,:,h);
 F_out=F_out.';
 
- if h<=5
+ if h<=50 % previously 5
      N_app=N(:,h)+(1./(Vol.*(1+m_t))).*( ( diag((Conn.'*F_in)) - diag((Conn*F_out))) ).*((t(h+1)-t(h))/2);
      %Fun_app=(1./(Vol.*(1+m_t))).*( ( diag((Conn.'*F_in)) - diag((Conn*F_out))) );
      N_adj_app=N_app.*Adj;
@@ -339,7 +346,9 @@ F_out=F_out.';
                                     'time_scale', ip.Results.time_scale, 'connectome_subset',ip.Results.connectome_subset, ...
                                     'mu_r_0',ip.Results.mu_r_0,'mu_r_L',ip.Results.mu_r_L, 'mu_u_0',ip.Results.mu_u_0, 'mu_u_L',ip.Results.mu_u_L ); %compute the steady state  network flux at time t0
 F_out_app=F_out_app.';
-m_t_app=Gamma_app.*N_app.*(2*beta_new-ip.Results.gamma2.*N_app./(beta_new-ip.Results.gamma2.*N_app).^2);
+%m_t_app=Gamma_app.*N_app.*(2*beta_new-ip.Results.gamma2.*N_app./(beta_new-ip.Results.gamma2.*N_app).^2);
+m_t_app=Gamma_app.*N_app.*((2*beta_new-ip.Results.gamma2.*N_app)./(beta_new-ip.Results.gamma2.*N_app).^2);
+
 Fun_app_2=(1./(Vol.*(1+m_t_app))).*( ( diag((Conn.'*F_in_app)) - diag((Conn*F_out_app))) );
 N(:,h+1)=N(:,h)+(Fun_app_2).*((t(h+1)-t(h)));
  else

@@ -6,8 +6,8 @@ lambda_in = 0.025;
 init_rescale = 0.02;
 frac = 0.7;
 axon_div = 'half';
-%conn_subset = 'all';
-conn_subset='Hippocampus+PC+RSP';
+conn_subset = 'all';
+%conn_subset='Hippocampus+PC+RSP';
 
 [N, M, ~] = network_transport_model_Neu_func(matdir, ...
                                           'alpha',alpha_in,...
@@ -28,4 +28,4 @@ conn_subset='Hippocampus+PC+RSP';
                                           'study',study_in,...
                                           'resmesh', 'coarse');
 
-save(filename_in,"N","M","alpha_in","gamma_in","delta_in","epsilon_in","uprel_in");
+save(filename_in,"N","M","alpha_in","gamma_in","delta_in","epsilon_in","uprel_in","study_in");
